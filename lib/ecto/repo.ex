@@ -83,8 +83,8 @@ defmodule Ecto.Repo do
         @adapter.stop(__MODULE__, pid, timeout)
       end
 
-      def transaction(opts \\ [], fun) when is_list(opts) do
-        @adapter.transaction(__MODULE__, opts, fun)
+      def transaction(opts \\ [], fun_or_multi) when is_list(opts) do
+        Ecto.Repo.transaction(@adapter, __MODULE__, opts, fun_or_multi)
       end
 
       def rollback(value) do
@@ -654,7 +654,7 @@ defmodule Ecto.Repo do
       end)
 
   """
-  @callback transaction(Keyword.t, fun) :: {:ok, any} | {:error, any}
+  @callback transaction(Keyword.t, fun  | Ecto.Multi.t) :: {:ok, any} | {:error, any}
 
   @doc """
   Rolls back the current transaction.
@@ -681,4 +681,16 @@ defmodule Ecto.Repo do
 
   """
   @callback log(Ecto.LogEntry.t) :: any
+
+  @doc false
+  def transaction(adapter, repo, opts, fun) when is_function(fun, 0) do
+    adapter.transaction(repo, opts, fun)
+  end
+
+  def transaction(adapter, repo, opts, %Ecto.Multi{} = multi) do
+    wrap   = &adapter.transaction(repo, &1, &2)
+    return = &adapter.rollback(repo, &1)
+
+    Ecto.Multi.apply(multi, repo, wrap, return, opts)
+  end
 end
