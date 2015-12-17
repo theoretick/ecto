@@ -51,7 +51,8 @@ defmodule Ecto.TestAdapter do
     {1, nil}
   end
 
-  def execute(_repo, _meta, {_, _}, _params, _preprocess, _opts) do
+  def execute(_repo, _meta, {operation, _}, _params, _preprocess, _opts) do
+    send self, operation
     {1, nil}
   end
 
